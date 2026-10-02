@@ -1,0 +1,3 @@
+import {describe,expect,it} from "vitest";
+import {revisionQueue} from "../../lib/learning/spaced-repetition";
+describe("revision queue",()=>{it("returns only decayed practiced concepts, ordered by urgency",()=>{const result=revisionQueue([{conceptId:"x",mastery:.5,retention:.3,importance:.8,lastPracticedAt:0},{conceptId:"y",mastery:.8,retention:.9,importance:.8,lastPracticedAt:0},{conceptId:"z",mastery:.5,retention:.45,importance:.2,lastPracticedAt:0},{conceptId:"new",mastery:.1,retention:.1,importance:1,lastPracticedAt:null}],1000);expect(result.map(x=>x.conceptId)).toEqual(["x","z"]);});});

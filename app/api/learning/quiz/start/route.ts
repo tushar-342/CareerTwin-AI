@@ -1,0 +1,10 @@
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
+import { authenticated,safeError } from "@/lib/api";
+import { adminDb } from "@/lib/firebase/admin";
+import { getSkillQuestions,getUserEvents,loadTwin,publicQuestion } from "@/lib/learning/store";
+import { selectNextQuestion } from "@/lib/learning/irt";
+import { calculateRetention } from "@/lib/learning/forgetting";
+import { BKT_DEFAULTS } from "@/lib/learning/config";
+const schema=z.object({skillId:z.string().regex(/^[a-z0-9-]{1,80}$/)});
+export async function POST(request:NextRequest){const auth=await authenticated(request);if("response" in auth)return auth.response;try{const parsed=schema.safeParse(await request.json());if(!parsed.success)return NextResponse.json({error:"Invalid skill"},{status:400});const skillId=parsed.data.skillId;const candidates=await getSkillQuestions(skillId);if(!candidates.length)return NextResponse.json({error:"Skill has no quiz questions. Seed the learning catalog first."},{status:404});const [twin,events]=await Promise.all([loadTwin(auth.user.uid),getUserEvents(auth.user.uid,30)]);const weak=Object.values(twin.conceptStates).filter(c=>c.mastery<.55||calculateRetention(c.mastery,c.lastPracticedAt)<.5).map(c=>c.conceptId);const ability=twin.skillStates[skillId]?.mastery??BKT_DEFAULTS.pL0;const theta=Math.log(ability/(1-ability));const recentlyAsked=events.filter(e=>e.skillId===skillId&&e.questionId).slice(0,3).map(e=>e.questionId!);const selected=selectNextQuestion(candidates,theta,recentlyAsked,weak)??selectNextQuestion(candidates,theta,[],weak);if(!selected)return NextResponse.json({error:"No available question"},{status:404});const ref=adminDb().collection(`users/${auth.user.uid}/quizAttempts`).doc();const attempt={id:ref.id,userId:auth.user.uid,skillId,currentQuestionId:selected.id,status:"in_progress",responses:[],startedAt:Date.now()};await ref.create(attempt);return NextResponse.json({quizId:ref.id,question:publicQuestion(selected),questionNumber:1});}catch(e){return safeError(e);}}

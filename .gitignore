@@ -1,0 +1,13 @@
+node_modules/
+.next/
+out/
+coverage/
+/work/
+/outputs/
+.env
+.env.*
+!.env.example
+*.log
+firebase-service-account*.json
+serviceAccountKey.json
+*.tsbuildinfo

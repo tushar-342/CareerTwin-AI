@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // All private learning data is accessed through authenticated server routes.
+    // Admin SDK bypasses these rules; clients cannot forge mastery or events.
+    match /users/{userId}/{document=**} { allow read, write: if false; }
+    // Catalog reads also go through the API; question answer keys stay server-only.
+    match /skills/{document=**} { allow read, write: if false; }
+    match /questions/{document=**} { allow read, write: if false; }
+    match /jobs/{document=**} { allow read, write: if false; }
+    match /courses/{document=**} { allow read, write: if false; }
+    match /knowledgeGraph/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
